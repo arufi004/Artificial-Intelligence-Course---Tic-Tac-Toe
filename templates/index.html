@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic Tac Toe</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 5px;
+            margin: 20px 0;
+        }
+        .cell {
+            width: 100px;
+            height: 100px;
+            background-color: white;
+            border: 2px solid #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 48px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .cell:hover {
+            background-color: #eee;
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        select {
+            padding: 8px;
+            font-size: 16px;
+        }
+        .stats {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-top: 20px;
+            width: 300px;
+        }
+        .stats h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .stats p {
+            margin: 5px 0;
+        }
+        .message {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 10px 0;
+            min-height: 30px;
+        }
+        .x-color {
+            color: #2196F3;
+        }
+        .o-color {
+            color: #FF5722;
+        }
+    </style>
+</head>
+<body>
+    <h1>Tic Tac Toe</h1>
+
+    <div class="controls">
+        <div class="control-group">
+            <label for="game-mode">Game Mode:</label>
+            <select id="game-mode">
+                <option value="human_vs_ai">Human vs AI</option>
+                <option value="ai_vs_ai">AI vs AI</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="algorithm">AI Algorithm:</label>
+            <select id="algorithm">
+                <option value="minimax">Minimax</option>
+                <option value="alphabeta">Alpha-Beta Pruning</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="player-letter">Your Letter:</label>
+            <select id="player-letter">
+                <option value="X">X</option>
+                <option value="O">O</option>
+            </select>
+        </div>
+
+        <button id="new-game-btn">New Game</button>
+    </div>
+
+    <div class="message" id="message"></div>
+
+    <div class="game-container">
+        <div class="board" id="board">
+            <!-- Cells will be added dynamically -->
+        </div>
+    </div>
+
+    <div class="stats">
+        <h3>Performance Stats</h3>
+        <p>Minimax Time: <span id="minimax-time">0</span> seconds</p>
+        <p>Alpha-Beta Time: <span id="alphabeta-time">0</span> seconds</p>
+        <p>Minimax Calls: <span id="minimax-calls">0</span></p>
+        <p>Alpha-Beta Calls: <span id="alphabeta-calls">0</span></p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const boardElement = document.getElementById('board');
+            const messageElement = document.getElementById('message');
+            const newGameBtn = document.getElementById('new-game-btn');
+            const gameModeSelect = document.getElementById('game-mode');
+            const algorithmSelect = document.getElementById('algorithm');
+            const playerLetterSelect = document.getElementById('player-letter');
+
+            const minimaxTimeElement = document.getElementById('minimax-time');
+            const alphabetaTimeElement = document.getElementById('alphabeta-time');
+            const minimaxCallsElement = document.getElementById('minimax-calls');
+            const alphabetaCallsElement = document.getElementById('alphabeta-calls');
+
+            let game = {
+                board: [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                currentWinner: null,
+                minimax_time: 0,
+                alphabeta_time: 0,
+                minimax_calls: 0,
+                alphabeta_calls: 0
+            };
+
+            //Initialize the board
+            function initializeBoard() {
+                boardElement.innerHTML = '';
+                for (let i = 0; i < 9; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.index = i;
+                    cell.addEventListener('click', handleCellClick);
+                    boardElement.appendChild(cell);
+                }
+                updateBoard();
+            }
+
+            //Update the board display
+            function updateBoard() {
+                const cells = document.querySelectorAll('.cell');
+                cells.forEach((cell, index) => {
+                    cell.textContent = game.board[index];
+                    if (game.board[index] === 'X') {
+                        cell.classList.add('x-color');
+                        cell.classList.remove('o-color');
+                    } else if (game.board[index] === 'O') {
+                        cell.classList.add('o-color');
+                        cell.classList.remove('x-color');
+                    } else {
+                        cell.classList.remove('x-color', 'o-color');
+                    }
+                });
+
+                //Update stats
+                minimaxTimeElement.textContent = game.minimax_time.toFixed(6);
+                alphabetaTimeElement.textContent = game.alphabeta_time.toFixed(6);
+                minimaxCallsElement.textContent = game.minimax_calls;
+                alphabetaCallsElement.textContent = game.alphabeta_calls;
+
+                //Update message
+                if (game.currentWinner) {
+                    messageElement.textContent = `${game.currentWinner} wins!`;
+                    messageElement.className = 'message ' + (game.currentWinner === 'X' ? 'x-color' : 'o-color');
+                } else if (!game.board.includes(' ')) {
+                    messageElement.textContent = "It's a tie!";
+                    messageElement.className = 'message';
+                } else {
+                    messageElement.textContent = '';
+                    messageElement.className = 'message';
+                }
+            }
+
+            //Handle cell click
+            function handleCellClick(e) {
+                if (gameModeSelect.value !== 'human_vs_ai') return;
+                if (game.currentWinner || !game.board.includes(' ')) return;
+
+                const index = parseInt(e.target.dataset.index);
+                if (game.board[index] !== ' ') return;
+
+                makeMove(index);
+            }
+
+            //Make a move
+            function makeMove(square) {
+                fetch('/make_move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        square: square,
+                        playerLetter: playerLetterSelect.value,
+                        algorithm: algorithmSelect.value,
+                        gameMode: gameModeSelect.value,
+                        board: game.board,
+                        currentWinner: game.currentWinner,
+                        minimax_time: game.minimax_time,
+                        alphabeta_time: game.alphabeta_time,
+                        minimax_calls: game.minimax_calls,
+                        alphabeta_calls: game.alphabeta_calls
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    game = data;
+                    updateBoard();
+
+                    // If in AI vs AI mode and game isn't over, make next move after a delay
+                    if (gameModeSelect.value === 'ai_vs_ai' && !game.currentWinner && game.board.includes(' ')) {
+                        setTimeout(() => {
+                            makeMove(-1); // No specific square needed for AI vs AI
+                        }, 1000);
+                    }
+                });
+            }
+
+            //Start a new game
+            function newGame() {
+                fetch('/new_game', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    game = data;
+                    initializeBoard();
+
+                    // If in AI vs AI mode, start the AI moves
+                    if (gameModeSelect.value === 'ai_vs_ai') {
+                        setTimeout(() => {
+                            makeMove(-1); // No specific square needed for AI vs AI
+                        }, 500);
+                    }
+                });
+            }
+
+            //Event listeners
+            newGameBtn.addEventListener('click', newGame);
+
+            //Initialize the game
+            newGame();
+        });
+    </script>
+</body>
+</html>
